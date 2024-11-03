@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Ticket</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Book a Movie Ticket</h1>
+    <form action="{{ url_for('book_ticket') }}" method="POST">
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="movie">Movie:</label><br>
+        <select id="movie" name="movie" required>
+            <option value="Inception">Inception</option>
+            <option value="Interstellar">Interstellar</option>
+            <option value="The Matrix">The Matrix</option>
+            <option value="Avengers">Avengers</option>
+        </select><br><br>
+
+        <button type="submit">Book Ticket</button>
+    </form>
+</body>
+</html>
