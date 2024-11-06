@@ -1,0 +1,110 @@
+<!-- employee.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.15.1/dist/full.css" rel="stylesheet">
+</head>
+<body class="bg-gray-200">
+
+<div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">Employee Dashboard</h1>
+    
+    <!-- Movies Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Movies</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for movie in movies %}
+            <div class="bg-white p-4 rounded shadow">
+                <img src="{{ movie.poster_image }}" alt="Poster for {{ movie.name }}" class="w-full h-48 object-cover mb-4">
+                <h3 class="text-xl font-semibold">{{ movie.name }}</h3>
+                <p><strong>Release Date:</strong> {{ movie.release_date }}</p>
+                <p><strong>Language:</strong> {{ movie.language }}</p>
+                <p><strong>Genre:</strong> {{ movie.genre }}</p>
+                <p><strong>Rating:</strong> {{ movie.rating }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Showtimes Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Showtimes</h2>
+        <table class="table-auto w-full bg-white shadow rounded">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="px-4 py-2">Movie</th>
+                    <th class="px-4 py-2">Date</th>
+                    <th class="px-4 py-2">Time</th>
+                    <th class="px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for showtime in showtimes %}
+                <tr>
+                    <td class="border px-4 py-2">{{ showtime.name }}</td>
+                    <td class="border px-4 py-2">{{ showtime.date }}</td>
+                    <td class="border px-4 py-2">{{ showtime.time }}</td>
+                    <td class="border px-4 py-2 text-center">
+                        <a href="{{ url_for('edit_showtime', showtime_id=showtime.showtime_id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add New Movie Form Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Add New Movie</h2>
+        <form action="{{ url_for('employee') }}" method="post" class="bg-white p-6 rounded shadow-md">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Movie Name</label>
+                <input type="text" name="name" id="name" class="input input-bordered w-full" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="release_date">Release Date</label>
+                <input type="date" name="release_date" id="release_date" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="language">Language</label>
+                <input type="text" name="language" id="language" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="genre">Genre</label>
+                <input type="text" name="genre" id="genre" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="rating">Rating</label>
+                <input type="number" name="rating" id="rating" class="input input-bordered w-full" step="0.1" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="poster_image">Poster Image URL</label>
+                <input type="text" name="poster_image" id="poster_image" class="input input-bordered w-full">
+            </div>
+
+            <!-- Showtime details -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="show_date">Show Date</label>
+                <input type="date" name="show_date" id="show_date" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="show_time">Show Time</label>
+                <input type="time" name="show_time" id="show_time" class="input input-bordered w-full" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-full">Add Movie</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
