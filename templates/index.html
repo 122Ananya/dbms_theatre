@@ -1,25 +1,25 @@
+
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet">
-    <title>Flask DaisyUI App</title>
+    <title>Theater Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.15.1/dist/full.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-200">
 
-    <div class="container mx-auto mt-5">
-        <div class="card w-96 bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title">Welcome to DaisyUI with Flask!</h2>
-                <p>Build stylish UIs with minimal effort.</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Get Started</button>
-                </div>
-            </div>
+<div class="flex justify-center items-center min-h-screen">
+    <div class="text-center space-y-4">
+        <h1 class="text-4xl font-bold">Welcome to Theater Management</h1>
+        <p>Manage your bookings with ease</p>
+        <div class="space-x-4">
+            <a href="/login" class="btn btn-primary">Login</a>
+            <a href="/signup" class="btn btn-secondary">Sign Up</a>
         </div>
     </div>
-    <a href="{{ url_for('movie_disp') }}">Go to Movie Display Page</a>
+</div>
 
 </body>
 </html>

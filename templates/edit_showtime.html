@@ -1,0 +1,31 @@
+<!-- edit_showtime.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Showtime</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.15.1/dist/full.css" rel="stylesheet">
+</head>
+<body class="bg-gray-200">
+
+<div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">Edit Showtime</h1>
+    
+    <form action="{{ url_for('edit_showtime', showtime_id=showtime['showtime_id']) }}" method="post" class="bg-white p-6 rounded shadow-md">
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="date">Show Date</label>
+            <input type="date" name="date" id="date" value="{{ showtime['date'] }}" class="input input-bordered w-full" required>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="time">Show Time</label>
+            <input type="time" name="time" id="time" value="{{ showtime['time'] }}" class="input input-bordered w-full" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full">Update Showtime</button>
+    </form>
+</div>
+
+</body>
+</html>
