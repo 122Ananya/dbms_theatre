@@ -1,10 +1,11 @@
 
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import sqlite3
 import hashlib
 import subprocess
 import os
+from PIL import Image
 
 app = Flask(__name__)
 app.secret_key = 'dev_key'  # Simple key for local development
@@ -52,6 +53,8 @@ def register():
         # Redirect based on role
         if role == 'employee':
             return redirect(url_for('employee'))
+        elif role == 'customer':
+                return redirect(url_for('movie_display'))
         return redirect(url_for('index'))
     
     except sqlite3.IntegrityError:
@@ -81,6 +84,8 @@ def login():
             # Redirect to employee dashboard if the role is 'employee'
             if user['role'] == 'employee':
                 return redirect(url_for('employee'))
+            elif user['role'] == 'customer':
+                return redirect(url_for('movie_display'))
             return redirect(url_for('index'))
         else:
             flash("Invalid email or password. Please try again.")
@@ -115,46 +120,15 @@ def employee():
         # Retrieve the movie ID of the newly added movie
         movie_id = c.lastrowid
 
-        # Insert showtime details
-        show_date = request.form['show_date']
-        show_time = request.form['show_time']
-        c.execute("INSERT INTO Showtime (movie_id, date, time) VALUES (?, ?, ?)", (movie_id, show_date, show_time))
-        conn.commit()
-
-        flash('Movie and showtime added successfully!')
 
     # Retrieve all movies for display
     c.execute("SELECT * FROM Movie")
     movies = c.fetchall()
 
-    # Retrieve all showtimes for display
-    c.execute("SELECT Showtime.showtime_id, Movie.name, Showtime.date, Showtime.time FROM Showtime JOIN Movie ON Showtime.movie_id = Movie.movie_id")
-    showtimes = c.fetchall()
-
     conn.close()
-    return render_template('employee.html', movies=movies, showtimes=showtimes)
+    return render_template('employee.html', movies=movies)
 
-@app.route('/edit_showtime/<int:showtime_id>', methods=['GET', 'POST'])
-def edit_showtime(showtime_id):
-    conn = get_db_connection()
-    c = conn.cursor()
 
-    if request.method == 'POST':
-        # Update showtime details
-        new_date = request.form['date']
-        new_time = request.form['time']
-        c.execute("UPDATE Showtime SET date = ?, time = ? WHERE showtime_id = ?", (new_date, new_time, showtime_id))
-        conn.commit()
-        conn.close()
-        flash('Showtime updated successfully!')
-        return redirect(url_for('employee'))
-
-    # For GET request, retrieve current showtime details
-    c.execute("SELECT * FROM Showtime WHERE showtime_id = ?", (showtime_id,))
-    showtime = c.fetchone()
-    conn.close()
-
-    return render_template('edit_showtime.html', showtime=showtime)
 
 
 @app.route('/logout')
@@ -162,6 +136,86 @@ def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect(url_for('index'))
+
+
+# adding movie by employee
+@app.route('/movies')
+def show_movies():
+    conn = get_db_connection()
+    movies = conn.execute('SELECT * FROM Movie').fetchall()
+    conn.close()
+    return render_template('employee.html', movies=movies)
+
+@app.route('/add_movie', methods=['POST'])
+def add_movie():
+    name = request.form['movie-name']
+    release_date = request.form['release-date']
+    language = request.form['language']
+    genre = request.form['genre']
+    rating = request.form['rating']
+    description = request.form['description']
+    poster = request.files['poster']
+    
+    # Define the path for the upload folder
+    img_folder = os.path.join('static', 'img')
+    
+    # Check if the img folder exists, and create it if it doesn’t
+    if not os.path.exists(img_folder):
+        os.makedirs(img_folder)
+
+    # Save the poster file in the img folder with resizing
+    poster_path = os.path.join(img_folder, poster.filename)
+    
+    # Open the uploaded image and resize it
+    with Image.open(poster) as img:
+        resized_img = img.resize((100, 100))  
+        resized_img.save(poster_path)
+
+    # Store movie details in the database
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO Movie (name, release_date, language, genre, rating, description, poster_image) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (name, release_date, language, genre, rating, description, poster.filename)
+    )
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"message": "Movie added successfully"}), 200
+
+@app.route('/delete_movie/<int:movie_id>', methods=['DELETE'])
+def delete_movie(movie_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Retrieve the poster image filename
+    cursor.execute('SELECT poster_image FROM Movie WHERE movie_id = ?', (movie_id,))
+    result = cursor.fetchone()
+
+    # Check if an image path is found, then delete the file
+    if result:
+        poster_image = result['poster_image']
+        image_path = os.path.join('static', 'img', poster_image)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+
+    # Delete the movie from the Movie table
+    cursor.execute('DELETE FROM Movie WHERE movie_id = ?', (movie_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'message': 'Movie and poster image deleted successfully'}), 200
+
+
+#show time 
+@app.route('/showtime')
+def showtime():
+    conn = get_db_connection()  # Assuming this function connects to your database
+    showtimes = conn.execute('SELECT * FROM Showtime').fetchall()  # Adjust table/field names as needed
+    conn.close()
+
+    return render_template('showtime.html', showtimes=showtimes)
+
+
 
 if __name__ == '__main__':
     subprocess.run(["python", os.path.join(os.path.dirname(__file__), "initialize_db.py")])
