@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet" />
+    <title>Login and Signup</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        height: 100vh;
+        margin: 0;
+        background-color: #f6f5f7;
+        background-size: cover;
+      }
+
+      .container {
+        background: #fff;
+        border-radius: 10px;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        max-width: 100%;
+        max-height: 100%;
+        position: relative;
+        transition: all 0.6s ease-in-out;
+      }
+
+      .form-container {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0 50px;
+        text-align: center;
+        transition: all 0.6s ease-in-out;
+      }
+
+      .sign-in-container {
+        left: 0;
+        z-index: 2;
+        opacity: 1;
+      }
+
+      .sign-up-container {
+        left: 0;
+        opacity: 0;
+        z-index: 1;
+      }
+
+      .container.right-panel-active .sign-in-container {
+        transform: translateX(100%);
+        opacity: 0;
+        z-index: 1;
+      }
+
+      .container.right-panel-active .sign-up-container {
+        transform: translateX(100%);
+        opacity: 1;
+        z-index: 2;
+      }
+
+      .overlay-container {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 50%;
+        height: 100%;
+        overflow: hidden;
+        transition: transform 0.6s ease-in-out;
+        z-index: 100;
+      }
+
+      .overlay {
+        background-image: url("{{ url_for('static', filename='piclogin.jpg') }}");
+        position: relative;
+        left: -100%;
+        height: 100%;
+        width: 200%;
+        transform: translateX(0);
+        transition: transform 0.6s ease-in-out;
+      }
+
+      .overlay-panel {
+        position: absolute;
+        display: flex;
+        align-items: right;
+        justify-content: left;
+        flex-direction: column;
+        padding: 0 40px;
+        text-align: center;
+        top: 0;
+        height: 100%;
+        width: 50%;
+        transform: translateX(0);
+        transition: transform 0.6s ease-in-out;
+      }
+
+      .overlay-left {
+        transform: translateX(-20%);
+      }
+
+      .overlay-right {
+        right: 0;
+        transform: translateX(0);
+      }
+
+      .container.right-panel-active .overlay-container {
+        transform: translateX(-100%);
+      }
+
+      .container.right-panel-active .overlay {
+        transform: translateX(50%);
+      }
+
+      button {
+        border: none;
+        padding: 12px 45px;
+        margin-top: 10px;
+        font-size: 15px;
+        font-weight: bold;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.3s;
+      }
+    
+      .sign-up-btn,
+      .sign-in-btn {
+        font-size: 50px;
+        font-weight: bold;
+        color: #e1e1e1;
+        padding: 12px 45px;
+      }
+
+      .progress-container {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 0.5rem;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 101;
+      }
+
+      .radial-progress {
+        --value: 0;
+        font-size: 1rem;
+        color: white;
+        transition: --value 0.5s ease;
+      }
+      .error-message {
+        color: red;
+        font-size: 0.9em;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="container {% if right_panel_active %}right-panel-active{% endif %}"
+      id="container"
+    >
+      <!-- Sign In Form -->
+      <div class="form-container sign-in-container">
+        <div class="progress-container">
+          <div
+            class="radial-progress text-primary"
+            style="--value: 40"
+            role="progressbar"
+          >
+            40%
+          </div>
+        </div>
+        <h2 class="card-title">Sign In</h2>
+        <form action="/login" method="post">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            class="input input-bordered w-full mb-4"
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            class="input input-bordered w-full mb-4"
+            required
+          />
+          {% if login_error %}
+            <p class="error-message">{{ login_error }}</p>
+          {% endif %}
+          <button type="submit" class="btn btn-secondary w-full mb-4">
+            Sign In
+          </button>
+        </form>
+      </div>
+
+      <!-- Sign Up Form -->
+      <div class="form-container sign-up-container">
+        <div class="progress-container progress-right">
+          <div class="radial-progress" style="--value: 20">20%</div>
+        </div>
+
+        <h2 class="card-title">Sign Up</h2>
+        <form action="/signup" method="post">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            class="input input-bordered w-full mb-4"
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            class="input input-bordered w-full mb-4"
+            required
+          />
+          <input
+            type="password"
+            name="confirm_password"
+            placeholder="Confirm Password"
+            class="input input-bordered w-full mb-4"
+            required
+          />
+          {% if signup_error %}
+            <p class="error-message">{{ signup_error }}</p>
+          {% endif %}
+          <button type="submit" class="btn btn-primary w-full">
+            Create Account
+          </button>
+        </form>
+      </div>
+
+      <!-- Overlay Panel -->
+      <div class="overlay-container">
+        <div class="overlay">
+          <div class="overlay-panel overlay-left">
+            <button class="ghost sign-in-btn" id="signIn">SIGN IN</button>
+          </div>
+          <div class="overlay-panel overlay-right">
+            <button class="ghost sign-up-btn" id="signUp">SIGN UP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const signInButton = document.getElementById("signIn");
+      const signUpButton = document.getElementById("signUp");
+      const container = document.getElementById("container");
+
+      signUpButton.addEventListener("click", () => {
+        container.classList.add("right-panel-active");
+      });
+
+      signInButton.addEventListener("click", () => {
+        container.classList.remove("right-panel-active");
+      });
+    </script>
+  </body>
+</html>

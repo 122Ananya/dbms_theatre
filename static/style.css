@@ -1,0 +1,20 @@
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vb;
+    margin: 0;
+}
+
+main {
+    flex: 1; 
+}
+
+.movie-bg {
+    background: linear-gradient(-45deg, #1a1a2e, #3b163e, #0f3460);
+    background-size: cover;
+    background-position: center;
+    height: 70.5vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
