@@ -1,8 +1,7 @@
-
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
-import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 import subprocess
 import os
 
@@ -12,89 +11,102 @@ app.secret_key = 'dev_key'  # Simple key for local development
 # Define the absolute path to the database
 DB_PATH = "theatre_management.db"
 
+
+theatre_credentials = {
+    "manager1": "password1",
+    "manager2": "password2",
+    "manager3": "password3",
+    "manager4": "password4",
+    "manager5": "password5",
+    "manager6": "password6",
+    "manager7": "password7"
+}
+
 # Function to connect to the existing database
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def hash_password(password):
-    """Hashes the password with SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
-
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/signup')
+@app.route('/login')
+def login_page():
+    return render_template('login.html', signup_error=None, login_error=None)
+
+@app.route('/signup', methods=['POST'])
 def signup():
-    return render_template('signup.html')
-
-@app.route('/register', methods=['POST'])
-def register():
-    name = request.form['name']
-    email = request.form['email']
-    phone_number = request.form['phone_number']
+    username = request.form['username']
     password = request.form['password']
-    role = request.form['role']
-    password_hash = hash_password(password)
+    confirm_password = request.form['confirm_password']
 
-    conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        c.execute(
-            "INSERT INTO User (name, email, phone_number, password_hash, role) VALUES (?, ?, ?, ?, ?)",
-            (name, email, phone_number, password_hash, role)
-        )
-        conn.commit()
-        flash('User registered successfully!')
-        
-        # Redirect based on role
-        if role == 'employee':
-            return redirect(url_for('employee'))
-        return redirect(url_for('index'))
+    if password != confirm_password:
+        return render_template('login.html', signup_error="Password mismatch", login_error=None, right_panel_active=True)
+
+    hashed_password = generate_password_hash(password)
     
-    except sqlite3.IntegrityError:
-        flash('Error: Email already exists.')
-        return redirect(url_for('signup'))
-    finally:
+    conn = sqlite3.connect(DB_PATH)    
+    c = conn.cursor()
+    
+    c.execute('SELECT * FROM User WHERE username = ?', (username,))
+    existing_user = c.fetchone()
+
+    if existing_user:
         conn.close()
+        return render_template('login.html', signup_error="Username already exists", login_error=None, right_panel_active=True)
+    
+    c.execute('INSERT INTO User (username,password) VALUES (?, ?)',(username, hashed_password))
+    conn.commit()
+    conn.close()
+        
+    flash('Account created successfully! Please log in.', 'success')
+    return redirect(url_for('login_page'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM User WHERE username = ?', (username,))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user is None or not check_password_hash(user[2], password):
+        return render_template('login.html', signup_error=None, login_error="Credentials mismatch")
+
+    session['username'] = username
+    flash('Login successful!', 'success')
+    return redirect(url_for('customer'))
+
+@app.route('/theatrelogin', methods=['GET', 'POST'])
+def theatre_login():
     if request.method == 'POST':
-        email = request.form['username']
+        username = request.form['username']
         password = request.form['password']
-        password_hash = hash_password(password)
 
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT * FROM User WHERE email = ? AND password_hash = ?", (email, password_hash))
-        user = c.fetchone()
-        conn.close()
-
-        if user:
-            session['user_id'] = user['user_id']
-            session['username'] = user['name']
-            session['role'] = user['role']
-            flash("Login successful!")
-            # Redirect to employee dashboard if the role is 'employee'
-            if user['role'] == 'employee':
-                return redirect(url_for('employee'))
-            return redirect(url_for('index'))
+        if username in theatre_credentials and theatre_credentials[username] == password:
+            session['theatre_username'] = username  # Log in as theatre user
+            flash('Logged in successfully as theatre manager', 'success')
+            return redirect(url_for('employee'))
         else:
-            flash("Invalid email or password. Please try again.")
-            return redirect(url_for('login'))
+            return render_template('theatre_login.html', login_error="Invalid username or password")
 
-    return render_template('login.html')
+    return render_template('theatre_login.html', login_error=None)
+
+
+@app.route('/theatre_logout')
+def theatre_logout():
+    session.pop('theatre_user_id', None)
+    session.pop('theatre_username', None)
+    flash("You have been logged out.")
+    return redirect(url_for('index'))
 
 @app.route('/employee', methods=['GET', 'POST'])
 def employee():
-    # Check if the user is logged in and is an employee
-    if 'role' not in session or session['role'] != 'employee':
-        flash("You do not have access to this page.")
-        return redirect(url_for('index'))
-
     conn = get_db_connection()
     c = conn.cursor()
 
@@ -118,7 +130,8 @@ def employee():
         # Insert showtime details
         show_date = request.form['show_date']
         show_time = request.form['show_time']
-        c.execute("INSERT INTO Showtime (movie_id, date, time) VALUES (?, ?, ?)", (movie_id, show_date, show_time))
+        c.execute("INSERT INTO Showtime (screen_number, movie_id, date, time) VALUES (?, ?, ?, ?)",
+                  (1, movie_id, show_date, show_time))
         conn.commit()
 
         flash('Movie and showtime added successfully!')
@@ -155,7 +168,6 @@ def edit_showtime(showtime_id):
     conn.close()
 
     return render_template('edit_showtime.html', showtime=showtime)
-
 
 @app.route('/logout')
 def logout():

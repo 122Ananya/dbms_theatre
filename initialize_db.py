@@ -8,15 +8,12 @@ db = sqlite3.connect(DB_PATH)
 # Create tables
 cursor = db.cursor()
 
-# User table with customer and employee roles
+# User table with customer
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS User (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone_number TEXT,
-    password_hash TEXT NOT NULL,
-    role TEXT CHECK(role IN ('customer', 'employee')) DEFAULT 'customer',
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
     past_movie TEXT
 )
 ''')
