@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Movies</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f5f7;
+            margin: 0;
+            padding: 20px;
+        }
+        .movie-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .movie-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 200px;
+            text-align: center;
+            padding: 20px;
+        }
+        .movie-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+        .movie-title {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #333;
+        }
+        .movie-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Available Movies</h1>
+    <div class="movie-container">
+        {% for movie in movies %}
+        <div class="movie-card">
+            <img src="{{ url_for('static', filename='img/' + movie[6]) }}" alt="{{ movie[1] }} Poster">
+            <h2 class="movie-title">{{ movie[1] }}</h2>
+            <p class="movie-info">Release Date: {{ movie[2] }}</p>
+            <p class="movie-info">Language: {{ movie[3] }}</p>
+            <p class="movie-info">Genre: {{ movie[4] }}</p>
+            <p class="movie-info">Rating: {{ movie[5] }}</p>
+            <p class="movie-info">{{ movie[7] }}</p>
+            <a href="{{ url_for('book_ticket', movie_id=movie[0]) }}" class="btn">Book Now</a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

@@ -63,25 +63,29 @@ def signup():
     conn.close()
         
     flash('Account created successfully! Please log in.', 'success')
-    return redirect(url_for('login_page'))
-
+    return redirect(url_for('login'))
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        # Connect to the database and check user credentials
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM User WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        conn.close()
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM User WHERE username = ?', (username,))
-    user = cursor.fetchone()
-    conn.close()
+        if user and check_password_hash(user[2], password):  # Assuming user[2] is the password hash
+            session['user_id'] = user[0]  # Set session user ID or another identifier
+            return redirect(url_for('customer_page'))  # Redirect to the customer page
+        else:
+            return render_template('login_signup.html', login_error="Invalid username or password")
 
-    if user is None or not check_password_hash(user[2], password):
-        return render_template('login.html', signup_error=None, login_error="Credentials mismatch")
+    # GET request renders the login and signup page
+    return render_template('login_signup.html')
 
-    session['username'] = username
-    flash('Login successful!', 'success')
-    return redirect(url_for('customer'))
 
 @app.route('/theatrelogin', methods=['GET', 'POST'])
 def theatre_login():
@@ -93,8 +97,6 @@ def theatre_login():
             session['theatre_username'] = username  # Log in as theatre user
             flash('Logged in successfully as theatre manager', 'success')
             return redirect(url_for('employee'))
-            elif user['role'] == 'customer':
-                return redirect(url_for('movie_display'))
         else:
             return render_template('theatre_login.html', login_error="Invalid username or password")
 
@@ -107,6 +109,7 @@ def theatre_logout():
     session.pop('theatre_username', None)
     flash("You have been logged out.")
     return redirect(url_for('index'))
+
 
 @app.route('/employee', methods=['GET', 'POST'])
 def employee():
@@ -145,6 +148,29 @@ def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect(url_for('index'))
+
+
+#customer page part
+@app.route('/customer')
+def customer_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Fetch all movies with movie_id as the first column
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT movie_id, name, release_date, language, genre, rating, poster_image, description FROM Movie')
+    movies = cursor.fetchall()
+    conn.close()
+
+    # Pass the movies data to the template
+    return render_template('customer.html', movies=movies)
+
+
+@app.route('/book_ticket/<int:movie_id>')
+def book_ticket(movie_id):
+    # Implement booking logic or showtimes for the selected movie
+    return f"Booking page for movie ID: {movie_id}"
 
 
 # adding movie by employee
