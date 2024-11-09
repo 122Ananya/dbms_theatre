@@ -242,13 +242,82 @@ def delete_movie(movie_id):
 
 
 #show time 
-@app.route('/showtime')
+@app.route('/showtime', methods=['GET', 'POST'])
 def showtime():
-    conn = get_db_connection()  # Assuming this function connects to your database
-    showtimes = conn.execute('SELECT * FROM Showtime').fetchall()  # Adjust table/field names as needed
+    conn = get_db_connection()
+
+    if request.method == 'POST':
+        action_type = request.form['action_type']
+
+        if action_type == 'add':
+            movie_id = request.form['movie_id']
+            screen_number = request.form['screen_number']
+            date = request.form['date']
+            time = request.form['time']
+
+            show_datetime = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
+            current_datetime = datetime.now()
+
+            if show_datetime <= current_datetime:
+                flash('Showtime must be scheduled for a future date and time.')
+                return redirect(url_for('showtime'))
+
+            conn.execute('''
+            INSERT INTO Showtime (movie_id, screen_number, date, time)
+            VALUES (?, ?, ?, ?);
+            ''', (movie_id, screen_number, date, time))
+            flash('New showtime added successfully!')
+
+        elif action_type == 'edit':
+            showtime_id = request.form['showtime_id']
+            movie_id = request.form['movie_id']
+            screen_number = request.form['screen_number']
+            date = request.form['date']
+            time = request.form['time']
+
+            conn.execute('''
+            UPDATE Showtime
+            SET movie_id = ?, screen_number = ?, date = ?, time = ?
+            WHERE showtime_id = ?;
+            ''', (movie_id, screen_number, date, time, showtime_id))
+            flash('Showtime updated successfully!')
+
+        elif action_type == 'delete':
+            showtime_id = request.form['showtime_id']
+            conn.execute('DELETE FROM Showtime WHERE showtime_id = ?;', (showtime_id,))
+            flash('Showtime deleted successfully!')
+
+        conn.commit()
+        conn.close()
+        return redirect(url_for('showtime'))
+
+    showtimes = conn.execute('''
+    SELECT
+    S.showtime_id,
+    M.name AS Movie,
+    S.date AS Show_Date,
+    TIME(S.time, 'localtime') AS Start_Time,
+    TIME(S.time, 'localtime', '+' || 
+        (CAST(SUBSTR(M.duration, 1, 2) AS INTEGER) * 60 + 
+        CAST(SUBSTR(M.duration, 4, 2) AS INTEGER)) || ' minute'
+    ) AS End_Time,
+    M.description AS Description,
+    strftime('%Y-%m-%d', M.release_date) AS Release_Date,
+    Sc.screen_number AS Screen_Number
+FROM
+    Showtime AS S
+JOIN
+    Movie AS M ON S.movie_id = M.movie_id
+JOIN
+    Screen AS Sc ON S.screen_number = Sc.screen_number;
+
+    ''').fetchall()
+
+    movies = conn.execute('SELECT movie_id, name, strftime("%Y-%m-%d", release_date) AS release_date FROM Movie').fetchall()
+    screens = conn.execute('SELECT screen_number FROM Screen').fetchall()
     conn.close()
 
-    return render_template('showtime.html', showtimes=showtimes)
+    return render_template('showtime.html', showtimes=[dict(i) for i in showtimes], movies=movies, screens=screens)
 
 
 
