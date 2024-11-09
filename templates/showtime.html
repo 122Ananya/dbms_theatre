@@ -1,0 +1,213 @@
+<link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<div class="bg-base-300 p-4 rounded-lg mb-4 flex items-center justify-between">
+    <h2 class="text-3xl font-bold text-center w-full">Movie Showtimes</h2>
+    <button id="addShowtimeBtn" class="btn btn-primary btn-circle" onclick="openDialog('add')">
+        <span class="text-xl">+</span>
+    </button>
+</div>
+
+{% if showtimes %}
+<div class="overflow-x-auto mx-4">
+    <table class="table w-full border-2 border-primary rounded-lg" style=" border-radius: 10px;">
+        <thead>
+            <tr class="bg-base-200 text-center">
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Movie</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Release Date</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Description</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Show Date</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Start Time</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">End Time</th>
+                <th class="p-3 border border-primary font-semibold text-lg bg-base-300">Screen Number</th>
+            </tr>
+        </thead>
+        <tbody class="rounded-lg overflow-hidden">
+            {% for showtime in showtimes %}
+            <tr class="{{ loop.index is odd and 'bg-base-300' or 'bg-base-200' }} hover:bg-base-100 text-center">
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['Movie'] }}</td>
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['Release_Date'] }}</td>
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['Description'] }}</td>
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['Show_Date'] }}</td>
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['Start_Time'] }}</td>
+                <td class="p-3 border border-primary bg-base-300">{{ showtime['End_Time'] }}</td>
+                <td class="p-3 border border-primary bg-base-300 relative">
+                    {{ showtime['Screen_Number'] }}
+                    <div
+                        class="action-buttons absolute right-2 top-1/2 transform -translate-y-1/2 flex justify-center space-x-4">
+                        <button
+                            class="p-0 flex items-center border-none bg-transparent hover:bg-transparent focus:outline-none"
+                            onclick="openDialog('edit', {{ showtime['showtime_id'] }}, '{{ showtime['Movie'] }}', '{{ showtime['Show_Date'] }}', '{{ showtime['Start_Time'] }}', '{{ showtime['Screen_Number'] }}')">
+                            <!-- Edit icon with blue color -->
+                            <span class="material-icons" style="color: blue;">edit</span>
+                        </button>
+                        <button
+                            class="p-0 flex items-center border-none bg-transparent hover:bg-transparent focus:outline-none"
+                            onclick="deleteShowtime({{ showtime['showtime_id'] }})">
+                            <!-- Delete icon with red color -->
+                            <span class="material-icons" style="color: red;">delete</span>
+                        </button>
+                    </div>
+
+
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-center text-lg text-gray-500">No shows available</p>
+{% endif %}
+
+<!-- Modal Dialog -->
+<div id="dialogForm" class="modal hidden">
+    <div class="modal-box">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeDialog()">&times;</button>
+        <form id="showtimeForm" action="{{ url_for('showtime') }}" method="post" class="space-y-4">
+            <input type="hidden" id="actionType" name="action_type" value="add">
+            <input type="hidden" id="showtimeId" name="showtime_id" value="">
+
+            <div>
+                <label for="movie_id" class="label">
+                    <span class="label-text">Select Movie:</span>
+                </label>
+                <select id="movie_id" name="movie_id" class="select select-bordered w-full" required
+                    onchange="updateMinDate()">
+                    {% for movie in movies %}
+                    <option value="{{ movie['movie_id'] }}" data-release-date="{{ movie['release_date'] }}">{{
+                        movie['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="screen_number" class="label">
+                    <span class="label-text">Select Screen:</span>
+                </label>
+                <select id="screen_number" name="screen_number" class="select select-bordered w-full" required>
+                    {% for screen in screens %}
+                    <option value="{{ screen['screen_number'] }}">Screen {{ screen['screen_number'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="date" class="label">
+                    <span class="label-text">Date:</span>
+                </label>
+                <input type="date" id="date" name="date" class="input input-bordered w-full" required>
+            </div>
+
+            <div>
+                <label for="time" class="label">
+                    <span class="label-text">Time:</span>
+                </label>
+                <input type="time" id="time" name="time" class="input input-bordered w-full" required>
+            </div>
+
+            <div class="modal-action">
+                <button type="submit" id="submitButton" class="btn btn-primary">Add Showtime</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- CSS for the modal and table row hover -->
+<style>
+    .action-buttons span.material-icons:hover {
+        transform: scale(1.2);
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 50;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-open {
+        display: flex;
+    }
+
+    .modal-box {
+        margin: 0;
+        max-width: 90%;
+        width: 500px;
+    }
+
+    .action-buttons {
+        display: none;
+        white-space: nowrap;
+    }
+
+    tr:hover .action-buttons {
+        display: flex;
+    }
+
+    .table th,
+    .table td {
+        padding: 12px;
+    }
+</style>
+
+<script>
+    function openDialog(action, showtimeId = '', movie = '', date = '', time = '', screenNumber = '') {
+        document.getElementById('dialogForm').classList.add('modal-open');
+        document.getElementById('actionType').value = action;
+        document.getElementById('submitButton').textContent = action === 'edit' ? 'Update Showtime' : 'Add Showtime';
+
+        if (action === 'edit') {
+            document.getElementById('showtimeId').value = showtimeId;
+            document.getElementById('movie_id').value = movie;
+            document.getElementById('screen_number').value = screenNumber;
+            document.getElementById('date').value = date;
+            document.getElementById('time').value = time;
+        } else {
+            document.getElementById('showtimeForm').reset();
+        }
+    }
+
+    function closeDialog() {
+        document.getElementById('dialogForm').classList.remove('modal-open');
+    }
+
+    function deleteShowtime(showtimeId) {
+        if (confirm('Are you sure you want to delete this showtime?')) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '{{ url_for("showtime") }}';
+            form.innerHTML = `
+                <input type="hidden" name="action_type" value="delete">
+                <input type="hidden" name="showtime_id" value="${showtimeId}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let today = new Date();
+        let yyyy = today.getFullYear();
+        let mm = String(today.getMonth() + 1).padStart(2, '0');
+        let dd = String(today.getDate()).padStart(2, '0');
+
+        document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
+    });
+
+    function updateMinDate() {
+        let movieSelect = document.getElementById('movie_id');
+        let selectedOption = movieSelect.options[movieSelect.selectedIndex];
+        let releaseDate = selectedOption.getAttribute('data-release-date');
+
+        if (releaseDate) {
+            document.getElementById('date').setAttribute('min', releaseDate);
+        }
+    }
+</script>
