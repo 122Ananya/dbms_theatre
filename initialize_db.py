@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS Movie (
     genre TEXT,
     rating REAL,
     poster_image BLOB,
-    description TEXT
+    description TEXT,
+    duration TEXT
 )
 ''')
 
