@@ -190,6 +190,7 @@ def add_movie():
     genre = request.form['genre']
     rating = request.form['rating']
     description = request.form['description']
+    duration = request.form['duration']
     poster = request.files['poster']
     
     # Define the path for the upload folder
@@ -210,8 +211,8 @@ def add_movie():
     # Store movie details in the database
     conn = get_db_connection()
     conn.execute(
-        'INSERT INTO Movie (name, release_date, language, genre, rating, description, poster_image) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (name, release_date, language, genre, rating, description, poster.filename)
+        'INSERT INTO Movie (name, release_date, language, genre, rating, description, duration, poster_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        (name, release_date, language, genre, rating, description, duration, poster.filename)
     )
     conn.commit()
     conn.close()
