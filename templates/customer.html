@@ -5,12 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Movies</title>
     <style>
-        body {
+        /* body {
             font-family: Arial, sans-serif;
             background-color: #f6f5f7;
             margin: 0;
             padding: 20px;
-        }
+        } */
+
+        body {
+        font-family: Arial, sans-serif;
+        height: 100vh;
+        margin: 0;
+        padding: 20px;
+        /* display: flex; */
+        /* align-items: center; */
+        /* justify-content: center; */
+        background: linear-gradient(135deg, #1d2671, #c33764);
+        color: black;
+      }
+
         .movie-container {
             display: flex;
             flex-wrap: wrap;
@@ -43,7 +56,7 @@
     </style>
 </head>
 <body>
-    <h1 style="text-align:center;">Available Movies</h1>
+    <h1 style="text-align:center; color:white; ">Available Movies</h1>
     <div class="movie-container">
         {% for movie in movies %}
         <div class="movie-card">

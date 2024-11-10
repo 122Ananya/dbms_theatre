@@ -433,7 +433,7 @@ def get_times(movie_id, date):
 
 # Route to display showtimes for a specific movie
 @app.route('/movie_ticket/<int:movie_id>', methods=['GET', 'POST'])
-def book_movie_ticket(movie_id):
+def book_movie_ticket(movie_id):    
     conn = get_db_connection()
 
     # Retrieve available showtimes for the selected movie
