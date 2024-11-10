@@ -2,28 +2,95 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Book a Ticket</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Book Showtime</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f5f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .booking-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 10px 0;
+        }
+    </style>
+    <script>
+        async function fetchShowtimes() {
+            try {
+                const response = await fetch(`/get_available_showtimes/{{ movie_id }}`);
+                const showtimes = await response.json();
+
+                const showtimeList = document.getElementById("showtimeList");
+                showtimeList.innerHTML = "";  // Clear any previous showtimes
+
+                if (showtimes.length) {
+                    showtimes.forEach(showtime => {
+                        const listItem = document.createElement("li");
+                        listItem.innerHTML = `
+                            <label>
+                                <input type="radio" name="showtime" value="${showtime.showtime_id}">
+                                Screen: ${showtime.screen_number} - Date: ${showtime.date}, Time: ${showtime.time}
+                            </label>
+                        `;
+                        showtimeList.appendChild(listItem);
+                    });
+                } else {
+                    showtimeList.innerHTML = "<li>No showtimes available</li>";
+                }
+            } catch (error) {
+                console.error("Error fetching showtimes:", error);
+            }
+        }
+
+        function proceedToSeatSelection() {
+            const selectedShowtime = document.querySelector('input[name="showtime"]:checked');
+            if (selectedShowtime && selectedShowtime.value) {
+                // Pass the showtime_id in the URL to redirect to the correct seat selection page
+                window.location.href = `/select_seats/${selectedShowtime.value}`;
+            } else {
+                alert("Please select a showtime.");
+            }
+        }
+    </script>
 </head>
-<body>
-    <h1>Book a Movie Ticket</h1>
-    <form action="{{ url_for('book_ticket') }}" method="POST">
-        <label for="name">Name:</label><br>
-        <input type="text" id="name" name="name" required><br><br>
-
-        <label for="email">Email:</label><br>
-        <input type="email" id="email" name="email" required><br><br>
-
-        <label for="movie">Movie:</label><br>
-        <select id="movie" name="movie" required>
-            <option value="Inception">Inception</option>
-            <option value="Interstellar">Interstellar</option>
-            <option value="The Matrix">The Matrix</option>
-            <option value="Avengers">Avengers</option>
-        </select><br><br>
-
-        <button type="submit">Book Ticket</button>
-    </form>
+<body onload="fetchShowtimes()">
+    <div class="booking-container">
+        <h1>Select Your Showtime</h1>
+        <ul id="showtimeList"></ul>
+        <button onclick="proceedToSeatSelection()">Continue to Seat Selection</button>
+    </div>
 </body>
 </html>

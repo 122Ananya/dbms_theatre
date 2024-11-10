@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Confirmation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f5f7;
+            text-align: center;
+            padding: 20px;
+        }
+        .ticket-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: auto;
+        }
+        .ticket-heading {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        .ticket-info {
+            font-size: 1em;
+            color: #333;
+            margin: 5px 0;
+        }
+        .poster-image {
+            width: 100%;
+            max-width: 150px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-container">
+        <h1 class="ticket-heading">Booking Confirmation</h1>
+        <img src="{{ url_for('static', filename='img/' + booking_details['movie_image']) }}" alt="Movie Poster" class="poster-image">
+        <p class="ticket-info"><strong>Username:</strong> {{ booking_details['user_name'] }}</p>
+        <p class="ticket-info"><strong>Booking ID:</strong> {{ booking_details['booking_id'] }}</p>
+        <p class="ticket-info"><strong>Movie:</strong> {{ booking_details['movie_name'] }}</p>
+        <p class="ticket-info"><strong>Screen Number:</strong> {{ booking_details['screen_number'] }}</p>
+        <p class="ticket-info"><strong>Date:</strong> {{ booking_details['show_date'] }}</p>
+        <p class="ticket-info"><strong>Time:</strong> {{ booking_details['show_time'] }}</p>
+        <p class="ticket-info"><strong>Seat Numbers:</strong> {{ booking_details['seat_numbers'] }}</p>
+        <p>Thank you for booking with us. Enjoy your movie!</p>
+    </div>
+</body>
+</html>

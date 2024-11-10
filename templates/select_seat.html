@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Seats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f5f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .seat-selection-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .seat-selection-container h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="seat-selection-container">
+        <h2>Select Your Seats</h2>
+        <p>Screen capacity: {{ screen_capacity }}</p>
+        <p>Total available seats: {{ total_available_seats }}</p>
+
+        <form action="/confirm_seats" method="POST">
+            <input type="hidden" name="showtime_id" value="{{ showtime_id }}">
+
+            <label for="num_seats">Number of seats:</label>
+            <input type="number" id="num_seats" name="num_seats" min="1" max="{{ total_available_seats }}" required>
+            
+
+            <button type="submit">Confirm Selection</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,9 +1,12 @@
 import sqlite3
 
 DB_PATH = "theatre_management.db"
-# Connect to the SQLite3 database (this will create the file if it doesn't exist)
+# Connect to the SQLite3 database
 db = sqlite3.connect(DB_PATH)
 cursor = db.cursor()
+
+# Enable foreign key support (required for SQLite)
+cursor.execute("PRAGMA foreign_keys = ON")
 
 # Create tables
 # User table with customer
@@ -39,12 +42,11 @@ CREATE TABLE IF NOT EXISTS Screen (
 )
 ''')
 
-# Seat table
+# Seat table without showtime_id attribute
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS Seat (
     seat_id INTEGER PRIMARY KEY,
     screen_number INTEGER,
-    seat_type TEXT CHECK(seat_type IN ('premier', 'normal')) NOT NULL,
     seat_price REAL NOT NULL,
     seat_number TEXT,
     is_booked BOOLEAN DEFAULT FALSE,
@@ -103,21 +105,18 @@ screens = [
 cursor.executemany('INSERT OR IGNORE INTO Screen (screen_number, capacity) VALUES (?, ?)', screens)
 
 # Insert data for Seat table
-seat_price_premium = 250
-seat_price_normal = 200
+seat_price = 200  # Set a standard price for all seats
 
 for screen_number in range(1, 4):  # Loop through screens 1, 2, 3
     seat_id_start = 100 * screen_number  # 100 for screen 1, 200 for screen 2, 300 for screen 3
     for i in range(50):  # Each screen has 50 seats
         seat_id = seat_id_start + i
-        seat_type = 'premier' if i < 10 else 'normal'  # First 10 seats are premium
-        seat_price = seat_price_premium if seat_type == 'premier' else seat_price_normal
         seat_number = f"S{screen_number}-{i+1}"  # Format seat number, e.g., S1-1, S1-2, etc.
         
         cursor.execute('''
-            INSERT OR IGNORE INTO Seat (seat_id, screen_number, seat_type, seat_price, seat_number)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (seat_id, screen_number, seat_type, seat_price, seat_number))
+            INSERT OR IGNORE INTO Seat (seat_id, screen_number, seat_price, seat_number)
+            VALUES (?, ?, ?, ?)
+        ''', (seat_id, screen_number, seat_price, seat_number))
 
 # Commit changes and close connection
 db.commit()
