@@ -47,19 +47,13 @@ This project is a theater management web application that allows customers to bo
    pip install -r requirements.txt
    ```
 
-3. Initialize the database:
-
-   ```bash
-   python initialize_db.py
-   ```
-
-4. Run the application:
+3. Run the application:
 
    ```bash
    python app.py
    ```
 
-5. Access the application at `http://localhost:5000`.
+4. Access the application at `http://localhost:5000`.
 
 ## Usage
 
@@ -67,10 +61,6 @@ This project is a theater management web application that allows customers to bo
 2. **Log in** to access your dashboard.
 3. **Browse** movies and **book tickets** as a customer.
 4. **Add or manage movies** as an employee.
-
-## Screenshots
-
-*Add relevant screenshots here for visual guidance.*
 
 ## Database Schema
 
