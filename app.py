@@ -246,7 +246,7 @@ def showtime():
     cursor = conn.cursor()
 
     if request.method == 'POST':
-        action_type = request.form['action_type']
+        action_type = request.form.get('action_type')
         movie_id = request.form.get('movie_id')
         screen_number = request.form.get('screen_number')
         date = request.form.get('date')
@@ -266,7 +266,7 @@ def showtime():
 
                 # Constraint 1: Check if the show date and time is after the movie release
                 if show_datetime < release_datetime:
-                    flash('Showtime must be after the movie release date (12:00:00).', 'showtime-error')
+                    flash('Showtime must be after the movie release date.', 'showtime-error')
                     return redirect(url_for('showtime'))
 
             # Constraint 2: Ensure showtime is today or later but not in the past
@@ -274,16 +274,12 @@ def showtime():
                 flash('Showtime must be scheduled for a future date and time.', 'showtime-error')
                 return redirect(url_for('showtime'))
 
-            # Constraint 3: Check for schedule overlap on the same screen, considering overnight shows
+            # Constraint 3: Check for schedule overlap on the same screen
             overlapping_showtimes = conn.execute('''
-                SELECT
-                    S.date, S.time, M.duration
-                FROM
-                    Showtime AS S
-                JOIN
-                    Movie AS M ON S.movie_id = M.movie_id
-                WHERE
-                    S.screen_number = ? AND (S.date = ? OR S.date = DATE(?, '-1 day'))
+                SELECT S.date, S.time, M.duration
+                FROM Showtime AS S
+                JOIN Movie AS M ON S.movie_id = M.movie_id
+                WHERE S.screen_number = ? AND (S.date = ? OR S.date = DATE(?, '-1 day'))
             ''', (screen_number, date, date)).fetchall()
 
             for show in overlapping_showtimes:
@@ -291,37 +287,41 @@ def showtime():
                 duration_hours, duration_minutes = map(int, show['duration'].split(':'))
                 existing_end_time = existing_start_time + timedelta(hours=duration_hours, minutes=duration_minutes + 15)
 
-                # Check if the new showtime conflicts with an existing showtime plus 15-minute break
+                # Check if the new showtime conflicts with an existing showtime plus a 15-minute break
                 if (existing_start_time <= show_datetime < existing_end_time) or (show_datetime < existing_end_time):
-                    flash('The selected time conflicts with an existing showtime on the same screen. Ensure there is at least a 15-minute break.', 'showtime-error')
+                    flash('The selected time conflicts with an existing showtime on the same screen.', 'showtime-error')
                     return redirect(url_for('showtime'))
 
-        if action_type == 'add':
-            conn.execute('''
-            INSERT INTO Showtime (movie_id, screen_number, date, time)
-            VALUES (?, ?, ?, ?);
-            ''', (movie_id, screen_number, date, time))
-            flash('New showtime added successfully!', 'showtime-success')
+        try:
+            if action_type == 'add':
+                conn.execute('''
+                    INSERT INTO Showtime (movie_id, screen_number, date, time)
+                    VALUES (?, ?, ?, ?);
+                ''', (movie_id, screen_number, date, time))
+                conn.commit()
+                flash('New showtime added successfully!', 'showtime-success')
 
-        elif action_type == 'edit':
-            showtime_id = request.form['showtime_id']
-            conn.execute('''
-            UPDATE Showtime
-            SET movie_id = ?, screen_number = ?, date = ?, time = ?
-            WHERE showtime_id = ?;
-            ''', (movie_id, screen_number, date, time, showtime_id))
-            flash('Showtime updated successfully!', 'showtime-success')
+            elif action_type == 'edit':
+                showtime_id = request.form.get('showtime_id')
+                conn.execute('''
+                    UPDATE Showtime
+                    SET movie_id = ?, screen_number = ?, date = ?, time = ?
+                    WHERE showtime_id = ?;
+                ''', (movie_id, screen_number, date, time, showtime_id))
+                conn.commit()
+                flash('Showtime updated successfully!', 'showtime-success')
 
-        elif action_type == 'delete':
-            showtime_id = request.form['showtime_id']
-            conn.execute('DELETE FROM Showtime WHERE showtime_id = ?;', (showtime_id,))
-            flash('Showtime deleted successfully!', 'showtime-success')
+            elif action_type == 'delete':
+                showtime_id = request.form.get('showtime_id')
+                conn.execute('DELETE FROM Showtime WHERE showtime_id = ?;', (showtime_id,))
+                conn.commit()
+                flash('Showtime deleted successfully!', 'showtime-success')
+        
+        except sqlite3.Error as e:
+            conn.rollback()
+            flash(f"Database error: {e}", 'showtime-error')
 
-            cursor.execute('INSERT INTO Showtime (movie_id, screen_number, date, time) VALUES (?, ?, ?, ?)',
-                           (movie_id, screen_number, date, time))
-            conn.commit()
-            flash('New showtime added successfully!')
-            
+    # Query existing showtimes, movies, and screens after handling POST request
     showtimes = cursor.execute('''
         SELECT
             S.showtime_id,
@@ -343,15 +343,14 @@ def showtime():
             Screen AS Sc ON S.screen_number = Sc.screen_number
     ''').fetchall()
 
-
+    # Query the list of available movies and screens to populate the dropdowns in the showtime form
     movies = cursor.execute('SELECT movie_id, name FROM Movie').fetchall()
     screens = cursor.execute('SELECT screen_number FROM Screen').fetchall()
 
+    # Close the connection after all operations are completed
     conn.close()
+
     return render_template('showtime.html', showtimes=showtimes, movies=movies, screens=screens)
-
-
-
 
 
 @app.route('/get_available_showtimes/<int:movie_id>')
