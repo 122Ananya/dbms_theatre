@@ -7,6 +7,7 @@ import os
 from PIL import Image
 from datetime import datetime, timedelta
 
+
 app = Flask(__name__)
 app.secret_key = 'dev_key'  # Simple key for local development
 
@@ -168,11 +169,6 @@ def customer_page():
     return render_template('customer.html', movies=movies)
 
 
-@app.route('/book_ticket/<int:movie_id>')
-def book_ticket(movie_id):
-    # Implement booking logic or showtimes for the selected movie
-    return f"Booking page for movie ID: {movie_id}"
-
 
 # adding movie by employee
 @app.route('/movies')
@@ -247,6 +243,7 @@ def delete_movie(movie_id):
 @app.route('/showtime', methods=['GET', 'POST'])
 def showtime():
     conn = get_db_connection()
+    cursor = conn.cursor()
 
     if request.method == 'POST':
         action_type = request.form['action_type']
@@ -320,48 +317,275 @@ def showtime():
             conn.execute('DELETE FROM Showtime WHERE showtime_id = ?;', (showtime_id,))
             flash('Showtime deleted successfully!', 'showtime-success')
 
-        conn.commit()
-        conn.close()
-        return redirect(url_for('showtime'))
-
-    showtimes = conn.execute('''
-    SELECT
-    S.showtime_id,
-    M.name AS Movie,
-    S.date AS Show_Date,
-    TIME(S.time, 'localtime') AS Start_Time,
-    TIME(S.time, 'localtime', '+' || 
-        (CAST(SUBSTR(M.duration, 1, 2) AS INTEGER) * 60 + 
-        CAST(SUBSTR(M.duration, 4, 2) AS INTEGER)) || ' minute'
-    ) AS End_Time,
-    M.description AS Description,
-    strftime('%Y-%m-%d', M.release_date) AS Release_Date,
-    Sc.screen_number AS Screen_Number
-FROM
-    Showtime AS S
-JOIN
-    Movie AS M ON S.movie_id = M.movie_id
-JOIN
-    Screen AS Sc ON S.screen_number = Sc.screen_number;
-
+            cursor.execute('INSERT INTO Showtime (movie_id, screen_number, date, time) VALUES (?, ?, ?, ?)',
+                           (movie_id, screen_number, date, time))
+            conn.commit()
+            flash('New showtime added successfully!')
+            
+    showtimes = cursor.execute('''
+        SELECT
+            S.showtime_id,
+            M.name AS Movie,
+            S.date AS Show_Date,
+            TIME(S.time, 'localtime') AS Start_Time,
+            TIME(S.time, 'localtime', '+' || 
+                (CAST(SUBSTR(M.duration, 1, 2) AS INTEGER) * 60 + 
+                CAST(SUBSTR(M.duration, 4, 2) AS INTEGER)) || ' minute'
+            ) AS End_Time,
+            M.description AS Description,
+            strftime('%Y-%m-%d', M.release_date) AS Release_Date,
+            Sc.screen_number AS Screen_Number
+        FROM
+            Showtime AS S
+        JOIN
+            Movie AS M ON S.movie_id = M.movie_id
+        JOIN
+            Screen AS Sc ON S.screen_number = Sc.screen_number
     ''').fetchall()
 
-    # Format the time values in the showtimes to HH:MM
-    showtimes = [
-        {
-            **dict(i),
-            'Start_Time': datetime.strptime(i['Start_Time'], '%H:%M:%S').strftime('%H:%M') if i['Start_Time'] else None,
-            'End_Time': datetime.strptime(i['End_Time'], '%H:%M:%S').strftime('%H:%M') if i['End_Time'] else None,
-        } for i in showtimes
-    ]
 
-    movies = conn.execute('SELECT movie_id, name, strftime("%Y-%m-%d", release_date) AS release_date FROM Movie').fetchall()
-    screens = conn.execute('SELECT screen_number FROM Screen').fetchall()
+    movies = cursor.execute('SELECT movie_id, name FROM Movie').fetchall()
+    screens = cursor.execute('SELECT screen_number FROM Screen').fetchall()
+
     conn.close()
-
     return render_template('showtime.html', showtimes=showtimes, movies=movies, screens=screens)
 
 
+
+
+
+@app.route('/get_available_showtimes/<int:movie_id>')
+def get_available_showtimes(movie_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get the current datetime to filter only upcoming showtimes
+    current_datetime = datetime.now()
+
+    # Query the showtimes for a specific movie_id that haven't started yet
+    cursor.execute('''
+        SELECT showtime_id, date, time, screen_number 
+        FROM Showtime 
+        WHERE movie_id = ? 
+        AND datetime(date || ' ' || time) > ?
+    ''', (movie_id, current_datetime))
+    showtimes = cursor.fetchall()
+    conn.close()
+    
+    # Convert to list of dictionaries for JSON response, including the screen number
+    showtimes_list = [
+        {
+            "showtime_id": row["showtime_id"],
+            "date": row["date"],
+            "time": row["time"],
+            "screen_number": row["screen_number"]
+        }
+        for row in showtimes
+    ]
+    return jsonify(showtimes_list)
+
+#booking tckets by user
+
+@app.route('/book_ticket/<int:movie_id>', methods=['GET', 'POST'])
+def book_ticket(movie_id):
+    conn = get_db_connection()
+
+    # Retrieve unique dates for showtimes of the selected movie
+    dates = conn.execute('''
+        SELECT DISTINCT date 
+        FROM Showtime 
+        WHERE movie_id = ? AND date >= date('now')
+        ORDER BY date
+    ''', (movie_id,)).fetchall()
+
+    # Fetch all showtime details for the selected movie
+    showtime_data = conn.execute('''
+        SELECT showtime_id, date, time, screen_number
+        FROM Showtime
+        WHERE movie_id = ?
+        ORDER BY date, time
+    ''', (movie_id,)).fetchall()
+
+    conn.close()
+
+    # Render the template with available dates and showtime data
+    return render_template('book_ticket.html', movie_id=movie_id, dates=dates, showtime_data=showtime_data)
+
+
+
+
+
+@app.route('/get_times/<int:movie_id>/<date>', methods=['GET'])
+def get_times(movie_id, date):
+    conn = get_db_connection()
+
+    # Retrieve available times for the selected date and movie
+    times = conn.execute('''
+        SELECT showtime_id, time, screen_number 
+        FROM Showtime 
+        WHERE movie_id = ? AND date = ?
+    ''', (movie_id, date)).fetchall()
+
+    conn.close()
+
+    # Return times as JSON
+    return jsonify([dict(time) for time in times])
+
+
+# Route to display showtimes for a specific movie
+@app.route('/movie_ticket/<int:movie_id>', methods=['GET', 'POST'])
+def book_movie_ticket(movie_id):
+    conn = get_db_connection()
+
+    # Retrieve available showtimes for the selected movie
+    showtimes = conn.execute('''
+        SELECT S.showtime_id, S.date, S.time, Sc.screen_number
+        FROM Showtime S
+        JOIN Screen Sc ON S.screen_number = Sc.screen_number
+        WHERE S.movie_id = ? AND date >= date('now')
+    ''', (movie_id,)).fetchall()
+
+    conn.close()
+
+    # Process POST request to select a specific showtime
+    if request.method == 'POST':
+        showtime_id = request.form['showtime_id']
+        return redirect(url_for('select_seats', showtime_id=showtime_id))
+
+    # Render showtimes for selection
+    return render_template('book_ticket.html', showtimes=showtimes, movie_id=movie_id)
+
+def unbook_seats_for_past_showtimes():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Retrieve all showtimes where the show end time is past the current time
+    cursor.execute('''
+        SELECT S.showtime_id
+        FROM Showtime AS S
+        JOIN Movie AS M ON S.movie_id = M.movie_id
+        WHERE datetime(S.date || ' ' || S.time) < datetime('now', 'localtime')
+    ''')
+    past_showtimes = cursor.fetchall()
+
+    # Unbook seats for each past showtime
+    for showtime in past_showtimes:
+        showtime_id = showtime['showtime_id']
+        cursor.execute('''
+            UPDATE Seat
+            SET is_booked = 0
+            WHERE seat_id IN (
+                SELECT seat_id
+                FROM Seat
+                WHERE screen_number = (SELECT screen_number FROM Showtime WHERE showtime_id = ?)
+            )
+        ''', (showtime_id,))
+
+    # Commit changes and close the connection
+    conn.commit()
+    conn.close()
+
+# Route to select seats for a specific showtime
+@app.route('/select_seats/<int:showtime_id>')
+def select_seats(showtime_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch total available seats for the specific showtime, excluding already booked seats
+    cursor.execute('''
+        SELECT COUNT(*) AS available_seats
+        FROM Seat
+        WHERE screen_number = (SELECT screen_number FROM Showtime WHERE showtime_id = ?)
+        AND seat_id NOT IN (
+            SELECT seat_id FROM BookingSeat WHERE booking_id IN (
+                SELECT booking_id FROM Booking WHERE showtime_id = ?
+            )
+        )
+    ''', (showtime_id, showtime_id))
+    available_seats_row = cursor.fetchone()
+    available_seats = available_seats_row["available_seats"] if available_seats_row else 0
+
+    # Fetch screen capacity
+    cursor.execute("SELECT capacity FROM Screen WHERE screen_number = (SELECT screen_number FROM Showtime WHERE showtime_id = ?)", (showtime_id,))
+    capacity_row = cursor.fetchone()
+    capacity = capacity_row["capacity"] if capacity_row else 0
+
+
+    conn.close()
+    return render_template('select_seat.html', showtime_id=showtime_id, screen_capacity=capacity, total_available_seats=available_seats)
+
+
+
+@app.route('/confirm_seats', methods=['POST'])
+def confirm_seats():
+    showtime_id = request.form.get('showtime_id')
+    num_seats = int(request.form.get('num_seats', 0))
+    user_id = session.get('user_id')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT seat_id FROM Seat
+        WHERE screen_number = (SELECT screen_number FROM Showtime WHERE showtime_id = ?)
+        AND seat_id NOT IN (
+            SELECT seat_id FROM BookingSeat WHERE booking_id IN (
+                SELECT booking_id FROM Booking WHERE showtime_id = ?
+            )
+        )
+        LIMIT ?
+    ''', (showtime_id, showtime_id, num_seats))
+    available_seats = cursor.fetchall()
+
+    if len(available_seats) < num_seats:
+        conn.close()
+        return "Not enough seats available", 400
+
+    booking_date = datetime.now().strftime('%Y-%m-%d')
+    cursor.execute("INSERT INTO Booking (user_id, showtime_id, booking_date) VALUES (?, ?, ?)", (user_id, showtime_id, booking_date))
+    booking_id = cursor.lastrowid
+
+    seat_ids = [seat['seat_id'] for seat in available_seats]
+    cursor.executemany("INSERT INTO BookingSeat (booking_id, seat_id) VALUES (?, ?)", [(booking_id, seat_id) for seat_id in seat_ids])
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('ticket', booking_id=booking_id))
+
+# Route to show ticket confirmation after booking
+@app.route('/ticket/<int:booking_id>')
+def ticket(booking_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    booking_details = cursor.execute('''
+        SELECT 
+            B.booking_id,
+            U.username AS user_name,
+            M.name AS movie_name,
+            M.poster_image AS movie_image,
+            S.screen_number,
+            ST.date AS show_date,
+            ST.time AS show_time,
+            GROUP_CONCAT(SE.seat_number, ', ') AS seat_numbers
+        FROM 
+            Booking B
+        JOIN Showtime ST ON B.showtime_id = ST.showtime_id
+        JOIN Movie M ON ST.movie_id = M.movie_id
+        JOIN Screen S ON ST.screen_number = S.screen_number
+        JOIN BookingSeat BS ON B.booking_id = BS.booking_id
+        JOIN Seat SE ON BS.seat_id = SE.seat_id
+        JOIN User U ON B.user_id = U.user_id
+        WHERE B.booking_id = ?
+        GROUP BY B.booking_id
+    ''', (booking_id,)).fetchone()
+
+    conn.close()
+    return render_template('ticket.html', booking_details=booking_details)
+
+    
+    
 if __name__ == '__main__':
     subprocess.run(["python", os.path.join(os.path.dirname(__file__), "initialize_db.py")])
     app.run(debug=True)
