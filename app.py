@@ -247,19 +247,75 @@ def showtime():
 
     if request.method == 'POST':
         action_type = request.form['action_type']
+        movie_id = request.form.get('movie_id')
+        screen_number = request.form.get('screen_number')
+        date = request.form.get('date')
+        time = request.form.get('time')
 
-        if action_type == 'add':
-            movie_id = request.form['movie_id']
-            screen_number = request.form['screen_number']
-            date = request.form['date']
-            time = request.form['time']
-
+        if movie_id and screen_number and date and time:
+            # Format the time to ensure only HH:MM is stored
+            time = datetime.strptime(time, '%H:%M').strftime('%H:%M')
             show_datetime = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
             current_datetime = datetime.now()
 
+            # Get the release date of the selected movie
+            movie = conn.execute('SELECT release_date, duration FROM Movie WHERE movie_id = ?', (movie_id,)).fetchone()
+            if movie:
+                release_date = datetime.strptime(movie['release_date'], '%Y-%m-%d')
+                release_datetime = datetime.combine(release_date, datetime.min.time())  # Movie release time at 00:00:00
+
+                # Constraint 1: Check if the show date and time is after the movie release
+                if show_datetime < release_datetime:
+                    flash('Showtime must be after the movie release date (12:00:00).', 'showtime-error')
+                    return redirect(url_for('showtime'))
+
+            # Constraint 2: Ensure showtime is today or later but not in the past
             if show_datetime <= current_datetime:
-                flash('Showtime must be scheduled for a future date and time.')
+                flash('Showtime must be scheduled for a future date and time.', 'showtime-error')
                 return redirect(url_for('showtime'))
+
+            # Constraint 3: Check for schedule overlap on the same screen, considering overnight shows
+            overlapping_showtimes = conn.execute('''
+                SELECT
+                    S.date, S.time, M.duration
+                FROM
+                    Showtime AS S
+                JOIN
+                    Movie AS M ON S.movie_id = M.movie_id
+                WHERE
+                    S.screen_number = ? AND (S.date = ? OR S.date = DATE(?, '-1 day'))
+            ''', (screen_number, date, date)).fetchall()
+
+            for show in overlapping_showtimes:
+                existing_start_time = datetime.strptime(f"{show['date']} {show['time']}", '%Y-%m-%d %H:%M')
+                duration_hours, duration_minutes = map(int, show['duration'].split(':'))
+                existing_end_time = existing_start_time + timedelta(hours=duration_hours, minutes=duration_minutes + 15)
+
+                # Check if the new showtime conflicts with an existing showtime plus 15-minute break
+                if (existing_start_time <= show_datetime < existing_end_time) or (show_datetime < existing_end_time):
+                    flash('The selected time conflicts with an existing showtime on the same screen. Ensure there is at least a 15-minute break.', 'showtime-error')
+                    return redirect(url_for('showtime'))
+
+        if action_type == 'add':
+            conn.execute('''
+            INSERT INTO Showtime (movie_id, screen_number, date, time)
+            VALUES (?, ?, ?, ?);
+            ''', (movie_id, screen_number, date, time))
+            flash('New showtime added successfully!', 'showtime-success')
+
+        elif action_type == 'edit':
+            showtime_id = request.form['showtime_id']
+            conn.execute('''
+            UPDATE Showtime
+            SET movie_id = ?, screen_number = ?, date = ?, time = ?
+            WHERE showtime_id = ?;
+            ''', (movie_id, screen_number, date, time, showtime_id))
+            flash('Showtime updated successfully!', 'showtime-success')
+
+        elif action_type == 'delete':
+            showtime_id = request.form['showtime_id']
+            conn.execute('DELETE FROM Showtime WHERE showtime_id = ?;', (showtime_id,))
+            flash('Showtime deleted successfully!', 'showtime-success')
 
             cursor.execute('INSERT INTO Showtime (movie_id, screen_number, date, time) VALUES (?, ?, ?, ?)',
                            (movie_id, screen_number, date, time))
@@ -453,6 +509,7 @@ def select_seats(showtime_id):
     cursor.execute("SELECT capacity FROM Screen WHERE screen_number = (SELECT screen_number FROM Showtime WHERE showtime_id = ?)", (showtime_id,))
     capacity_row = cursor.fetchone()
     capacity = capacity_row["capacity"] if capacity_row else 0
+
 
     conn.close()
     return render_template('select_seat.html', showtime_id=showtime_id, screen_capacity=capacity, total_available_seats=available_seats)
