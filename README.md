@@ -37,7 +37,7 @@ This project is a theater management web application that allows customers to bo
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/122Ananya/dbms_theatre.git
    cd dbms_theatre
    ```
 
