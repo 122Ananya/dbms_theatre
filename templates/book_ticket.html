@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <title>Book Showtime</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f6f5f7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1d2671, #c33764);
+        color: black;
+      }
         .booking-container {
             background: #fff;
             padding: 30px;
@@ -25,6 +26,13 @@
             font-size: 1.8em;
             margin-bottom: 20px;
             color: #333;
+        }
+        select {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
         }
         button {
             width: 100%;
@@ -39,6 +47,14 @@
         button:hover {
             background-color: #218838;
         }
+        .date-section {
+            margin-bottom: 20px;
+        }
+        .date-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
         ul {
             list-style-type: none;
             padding: 0;
@@ -48,31 +64,83 @@
         }
     </style>
     <script>
+        let showtimesByDate = {};
+
         async function fetchShowtimes() {
             try {
                 const response = await fetch(`/get_available_showtimes/{{ movie_id }}`);
                 const showtimes = await response.json();
 
                 const showtimeList = document.getElementById("showtimeList");
+                const dateFilter = document.getElementById("dateFilter");
+
                 showtimeList.innerHTML = "";  // Clear any previous showtimes
+                dateFilter.innerHTML = "<option value='all'>All Dates</option>"; // Add default filter option
 
                 if (showtimes.length) {
+                    // Group showtimes by date
                     showtimes.forEach(showtime => {
-                        const listItem = document.createElement("li");
-                        listItem.innerHTML = `
-                            <label>
-                                <input type="radio" name="showtime" value="${showtime.showtime_id}">
-                                Screen: ${showtime.screen_number} - Date: ${showtime.date}, Time: ${showtime.time}
-                            </label>
-                        `;
-                        showtimeList.appendChild(listItem);
+                        if (!showtimesByDate[showtime.date]) {
+                            showtimesByDate[showtime.date] = [];
+                            // Add date to the filter dropdown
+                            const option = document.createElement("option");
+                            option.value = showtime.date;
+                            option.textContent = showtime.date;
+                            dateFilter.appendChild(option);
+                        }
+                        showtimesByDate[showtime.date].push(showtime);
                     });
+
+                    // Show all showtimes initially
+                    showShowtimesForDate("all");
                 } else {
                     showtimeList.innerHTML = "<li>No showtimes available</li>";
                 }
             } catch (error) {
                 console.error("Error fetching showtimes:", error);
             }
+        }
+
+        function showShowtimesForDate(selectedDate) {
+            const showtimeList = document.getElementById("showtimeList");
+            showtimeList.innerHTML = ""; // Clear any previous showtimes
+
+            if (selectedDate === "all") {
+                // Show all showtimes grouped by date
+                for (const date in showtimesByDate) {
+                    createDateSection(date, showtimesByDate[date], showtimeList);
+                }
+            } else if (showtimesByDate[selectedDate]) {
+                // Show showtimes only for the selected date
+                createDateSection(selectedDate, showtimesByDate[selectedDate], showtimeList);
+            } else {
+                showtimeList.innerHTML = "<li>No showtimes available for this date</li>";
+            }
+        }
+
+        function createDateSection(date, showtimes, showtimeList) {
+            const dateSection = document.createElement("div");
+            dateSection.classList.add("date-section");
+
+            const dateTitle = document.createElement("div");
+            dateTitle.classList.add("date-title");
+            dateTitle.textContent = `Date: ${date}`;
+
+            dateSection.appendChild(dateTitle);
+
+            const ul = document.createElement("ul");
+            showtimes.forEach(showtime => {
+                const listItem = document.createElement("li");
+                listItem.innerHTML = `
+                    <label>
+                        <input type="radio" name="showtime" value="${showtime.showtime_id}">
+                        Screen: ${showtime.screen_number} - Time: ${showtime.time}
+                    </label>
+                `;
+                ul.appendChild(listItem);
+            });
+            dateSection.appendChild(ul);
+            showtimeList.appendChild(dateSection);
         }
 
         function proceedToSeatSelection() {
@@ -89,7 +157,8 @@
 <body onload="fetchShowtimes()">
     <div class="booking-container">
         <h1>Select Your Showtime</h1>
-        <ul id="showtimeList"></ul>
+        <select id="dateFilter" onchange="showShowtimesForDate(this.value)"></select>
+        <div id="showtimeList"></div>
         <button onclick="proceedToSeatSelection()">Continue to Seat Selection</button>
     </div>
 </body>

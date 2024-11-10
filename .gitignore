@@ -1,2 +1,3 @@
 node_modules
 theatre_management_system.db
+.venv/
